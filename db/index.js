@@ -1,5 +1,6 @@
 const mysql = require('mysql')
 const pool = mysql.createPool({
+    connectionLimit: 20,
     host: 'localhost',
     user: 'root',
     port: 3306,
@@ -13,17 +14,16 @@ pool.getConnection(function(err, connection) {
     } else {
         console.log("建立连接成功");
         console.log(pool._allConnections.length); //  1
-        connection.query('select * from user', function(err, rows) {
+        connection.query('select * from user_info', function(err, rows) {
+            connection.release();
             if(err) {
                 console.log("查询失败");
             } else {
                 console.log(rows);
-            }
-            // connection.destory();
+            } 
             console.log(pool._allConnections.length);  // 0
         })
     }
-    connection.release()
     // pool.end();
 })
 const commomTable = {
@@ -94,16 +94,16 @@ let createTable = function(sql) {
 }
 // 建表
 // console.log('create table');
-createTable(commomTable.users)
+// createTable(commomTable.users)
 // createTable(commomTable.role)
 // createTable(commomTable.permission)
 // createTable(commomTable.userRole)
 // createTable(commomTable.rolePermission)
 
 // 查询用户是否存在
-let findUser = async function(mobile) {
+let findUser = async function(id) {
     let _sql = `
-        SELECT * FROM user_info where user_mobile="${mobile}" limit 1;
+        SELECT * FROM user_info where user_id="${id}" limit 1;
     `
     let result = await query(_sql)
 

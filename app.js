@@ -11,8 +11,25 @@ const http = require('http'),
     router = require('./api'),
     path = require('path'),
     creatSocket = require('./socket'),
-    cors = require('koa2-cors');
+    cors = require('koa2-cors'),
+    koajwt = require('koa-jwt'),
+    config = require('./config.js');
 
+// error handler
+onerror(app)
+// middlewares 中间件
+// logger
+const TimeLogger = logger(str => {
+    console.log(Moment().format('YYYY-MM-DD HH:mm:ss') + str);
+})
+app.use(TimeLogger) 
+//控制台日志
+// app.use(async (ctx, next) => {
+//     const start = new Date()
+//     await next()
+//     const ms = new Date() - start
+//     console.log(`${ctx.method} ${ctx.url} - ${ms}ms`)
+// })
 app.use(cors({
     origin: function(ctx) {
         // if (ctx.url === '/test') {
@@ -25,9 +42,6 @@ app.use(cors({
     allowHeaders: ['Content-Type', 'Authorization', 'Accept'],
 }))
 
-// error handler
-onerror(app)
-// middlewares 中间件
 app.use(koaBody({
     multipart: true, // 支持文件上传
     formidable: {
@@ -45,32 +59,34 @@ app.use(require('koa-static')(__dirname + '/public'))
 //     extension: 'pug'
 // }))
 
-// logger
-const TimeLogger = logger(str => {
-    console.log(Moment().format('YYYY-MM-DD HH:mm:ss') + str);
-})
-app.use(TimeLogger) //控制台日志
-// app.use(async (ctx, next) => {
-//     const start = new Date()
-//     await next()
-//     const ms = new Date() - start
-//     console.log(`${ctx.method} ${ctx.url} - ${ms}ms`)
-// })
-
-
 // routes
 app.use(router.routes());
-
-
-
-
 
 // error-handling
 app.on('error', (err, ctx) => {
     console.error('server error', err, ctx)
 });
+// 对token进行验证
+app.use(async (ctx, next) => {
+    return next().catch((err) => {
+        if (err.status === 401) {
+            ctx.status = 401;
+            ctx.body = {
+                code: 401,
+                msg: err.message
+            }
+        } else {
+            throw err;
+        }
+    })
+});
 
-// module.exports = app
+// app.use(koajwt({ secret: config.jwt_secret, passthrough: true }).unless({
+//     // 登录，注册接口不需要验证
+//     path: [/^\/api\/login/]
+// }));
+
+
 
 
 /**
