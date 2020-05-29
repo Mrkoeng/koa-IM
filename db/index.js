@@ -1,4 +1,5 @@
 const mysql = require('mysql')
+const utils = require('../util/index.js')
 const pool = mysql.createPool({
     connectionLimit: 20,
     host: 'localhost',
@@ -8,20 +9,20 @@ const pool = mysql.createPool({
     database: 'im_mysql'
 })
 
-pool.getConnection(function(err, connection) {
-    if(err){
+pool.getConnection((err, connection)=> {
+    if (err) {
         console.log("建立连接失败");
     } else {
         console.log("建立连接成功");
         console.log(pool._allConnections.length); //  1
-        connection.query('select * from user_info', function(err, rows) {
+        connection.query('select * from user_info', (err, rows)=> {
             connection.release();
-            if(err) {
+            if (err) {
                 console.log("查询失败");
             } else {
                 console.log(rows);
-            } 
-            console.log(pool._allConnections.length);  // 0
+            }
+            console.log(pool._allConnections.length); // 0
         })
     }
     // pool.end();
@@ -37,36 +38,41 @@ const commomTable = {
       user_email VARCHAR ( 64 ) COMMENT '邮箱',
       user_creatdata TIMESTAMP NOT NULL DEFAULT NOW( ) COMMENT '注册日期',
       user_login_time TIMESTAMP DEFAULT NOW( ) COMMENT '登录时间',
+      user_socketid VARCHAR ( 225 ) COMMENT 'socketid',
       user_count INT COMMENT '登录次数'
     ) ENGINE = INNODB charset = utf8;`,
-    role: `CREATE TABLE IF NOT EXISTS role_info (
-      id INT PRIMARY KEY NOT NULL AUTO_INCREMENT COMMENT '(自增长)',
-      role_name VARCHAR ( 20 ) NOT NULL COMMENT '角色名',
-      role_description VARCHAR ( 255 ) DEFAULT NULL COMMENT '描述'
-    ) ENGINE = INNODB charset = utf8;`,
-    permission: `CREATE TABLE IF NOT EXISTS permission_info (
-      id INT PRIMARY KEY NOT NULL AUTO_INCREMENT COMMENT '(自增长)',
-      permission_name VARCHAR ( 20 ) NOT NULL COMMENT '权限名',
-      permission_description VARCHAR ( 255 ) DEFAULT NULL COMMENT '描述'
-    ) ENGINE = INNODB charset = utf8;`,
-    userRole: `CREATE TABLE IF NOT EXISTS user_role (
-      id INT PRIMARY KEY NOT NULL AUTO_INCREMENT COMMENT '(自增长)',
-      user_id INT NOT NULL COMMENT '关联用户',
-      role_id INT NOT NULL COMMENT '关联角色',
-      KEY fk_user_role_role_info_1 ( role_id ),
-      KEY fk_user_role_user_info_1 ( user_id ),
-      CONSTRAINT fk_user_role_role_info_1 FOREIGN KEY ( role_id ) REFERENCES role_info ( id ) ON DELETE CASCADE ON UPDATE CASCADE,
-      CONSTRAINT fk_user_role_user_info_1 FOREIGN KEY ( user_id ) REFERENCES user_info ( id ) ON DELETE CASCADE ON UPDATE CASCADE
-    ) ENGINE = INNODB charset = utf8;`,
-    rolePermission: `CREATE TABLE IF NOT EXISTS role_permission (
-      id INT PRIMARY KEY NOT NULL AUTO_INCREMENT COMMENT '(自增长)',
-      role_id INT NOT NULL COMMENT '关联角色',
-      permission_id INT NOT NULL COMMENT '关联权限',
-      KEY fk_role_permission_role_info_1 ( role_id ),
-      KEY fk_role_permission_permission_info_1 ( permission_id ),
-      CONSTRAINT fk_role_permission_role_info_1 FOREIGN KEY ( role_id ) REFERENCES role_info ( id ) ON DELETE CASCADE ON UPDATE CASCADE,
-      CONSTRAINT fk_role_permission_permission_info_1 FOREIGN KEY ( permission_id ) REFERENCES permission_info ( id ) ON DELETE CASCADE ON UPDATE CASCADE
-    ) ENGINE = INNODB charset = utf8;`
+    privatemsg: `CREATE TABLE  IF NOT EXISTS private_msg (
+      id int(11) NOT NULL AUTO_INCREMENT,
+      from_user varchar(15) NOT NULL,
+      to_user varchar(15) NOT NULL,
+      message text,
+      type varchar(20) NOT NULL,
+      time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+      attachments varchar(250) DEFAULT '[]',
+      PRIMARY KEY (id),
+      KEY from_user (from_user),
+      KEY to_user (to_user)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;`,
+    off_line_msg:`CREATE TABLE  IF NOT EXISTS off_line_msg (
+      id int(11) NOT NULL AUTO_INCREMENT,
+      from_user varchar(15) NOT NULL DEFAULT '',
+      to_user varchar(15) NOT NULL DEFAULT '',
+      message text DEFAULT '',
+      type varchar(20) NOT NULL DEFAULT '',
+      time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+      attachments varchar(250) DEFAULT '[]',
+      PRIMARY KEY (id),
+      KEY from_user (from_user),
+      KEY to_user (to_user)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;`,
+    user_relation: `CREATE TABLE IF NOT EXISTS user_user_relation (
+      id int(11) NOT NULL AUTO_INCREMENT,
+      user_id VARCHAR(16) NOT NULL,
+      from_user VARCHAR(16) NOT NULL,
+      remark varchar(10) DEFAULT NULL,
+      time TIMESTAMP NOT NULL DEFAULT NOW( ) COMMENT '添加好友时间',
+      PRIMARY KEY (id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;`,
 }
 
 let query = function(sql, values) {
@@ -79,6 +85,7 @@ let query = function(sql, values) {
                     if (err) {
                         reject(err)
                     } else {
+                        //数据转驼峰
                         resolve(rows)
                     }
                     connection.release()
@@ -95,10 +102,6 @@ let createTable = function(sql) {
 // 建表
 // console.log('create table');
 // createTable(commomTable.users)
-// createTable(commomTable.role)
-// createTable(commomTable.permission)
-// createTable(commomTable.userRole)
-// createTable(commomTable.rolePermission)
 
 // 查询用户是否存在
 let findUser = async function(id) {
@@ -117,14 +120,15 @@ let findUser = async function(id) {
 
 // 创建用户
 let addUser = async function(userinfo) {
-    let _sql = `
+    let _sql =
+        `
        INSERT INTO user_info 
        ( user_id, user_pwd,user_creatdata,user_login_time)
        VALUES
        ( "${userinfo.name}", "${userinfo.password}",Now(),Now())
     `
     let result = await query(_sql)
-    console.log('创建用户结果',result);
+    console.log('创建用户结果', result);
     if (Array.isArray(result) && result.length > 0) {
         result = result[0]
     } else {
@@ -134,7 +138,7 @@ let addUser = async function(userinfo) {
 }
 
 // 查询用户以及用户角色
-let findUserAndRole = async function(id) {
+let findUserAndRole = async (id)=> {
     let _sql =
         `
       SELECT u.*,r.role_name FROM user_info u,user_role ur,role_info r where u.id=(SELECT id FROM user_info where user_id="${id}" limit 1) and ur.user_id=u.id and r.id=ur.user_id limit 1;
@@ -148,22 +152,98 @@ let findUserAndRole = async function(id) {
     }
     return result
 }
-
-// 更新用户登录次数和登录时间
-let UpdataUserInfo = async function(value) {
+    
+// 查询用户好友列表
+let findUserFriendList = async ({user_id})=> {
     let _sql =
-        'UPDATE user_info SET user_count = ?, user_login_time = ? WHERE id = ?;'
-    return query(_sql, value)
+        `SELECT ul.user_name,ul.user_id,ul.user_head,ur.remark 
+        FROM user_info ul 
+        LEFT JOIN 
+        user_user_relation ur 
+        on ur.user_id = ul.user_id 
+        where ur.from_user = "${user_id}";`
+    return query(_sql)
 }
 
 
+// 更新用户登录次数和登录时间及
+let updataUserInfo = async ({user_count,user_id})=> {
+    let _sql =
+        `UPDATE user_info SET user_count = "${user_count}", user_login_time = NOW() WHERE user_id = "${user_id}" limit 1;`
+    return query(_sql)
+}
 
+// 更新用户socketid
+let saveUserSocketId = async ({user_socketid, user_id})=> {
+    let value = [user_socketid, user_id]
+    let _sql =
+        'UPDATE user_info SET user_socketid=? WHERE user_id = ? limit 1;'
+    return query(_sql, value)
+}
+// 保存所有私聊信息
+let savePrivateMsg = async ({ from_user, to_user, message, type, attachments })=>{
+    const value = [from_user, to_user, message, type, attachments];
+    let _sql =
+        `INSERT INTO private_msg(from_user,to_user,message,type,attachments,time)  VALUES(?,?,?,?,?,CURRENT_TIMESTAMP());`
+    return query(_sql, value)
+}
+
+// 保存离线信息
+let saveOffLineMsg = async ({ from_user, to_user, message, type, attachments })=>{
+    const value = [from_user, to_user, message, type, attachments];
+    let _sql =
+        `INSERT INTO off_line_msg(from_user,to_user,message,type,attachments,time)  VALUES(?,?,?,?,?,CURRENT_TIMESTAMP());`
+    return query(_sql, value)
+}
+// 获取用户socketid
+let getUserSocketId = async (id)=>{
+    let _sql =
+    `
+        SELECT user_socketid FROM user_info where user_id="${id}" limit 1;
+    `
+    return query(_sql)
+}
+// 获取用户聊天所有信息
+let getAllMessage = async ({ user_id })=>{
+    let _sql =
+        `
+        SELECT * FROM private_msg WHERE from_user="${user_id}" OR to_user="${user_id}";
+        `
+    return query(_sql)
+}
+  // 获取离线信息
+let getOffLineMessage = async ({ user_id })=>{
+  let _sql =
+      `
+      SELECT A.*,B.user_name,B.user_head FROM
+      (SELECT from_user,message,time,to_user,attachments,type FROM off_line_msg WHERE to_user="${user_id}") A
+      LEFT JOIN
+      (SELECT  user_id,user_name,user_head FROM user_info) B
+      ON A.from_user=B.user_id;
+      `
+      // on ur.user_id = ul.to_user
+  return query(_sql)
+}
+let deleteOffLineMessage =  async ({ user_id })=>{
+    let _sql =
+        `
+        DELETE FROM off_line_msg WHERE to_user="${user_id}";
+        `
+    return query(_sql)
+}
 module.exports = {
     //暴露方法
     // createTable,
     addUser,
     findUser,
-    findUserAndRole,
-    UpdataUserInfo,
-    // getShopAndAccount
+    // addFriends,  
+    findUserFriendList,
+    updataUserInfo,
+    saveUserSocketId,
+    getUserSocketId,
+    savePrivateMsg,
+    saveOffLineMsg,
+    getAllMessage,
+    getOffLineMessage,
+    deleteOffLineMessage,
 }

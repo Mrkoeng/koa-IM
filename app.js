@@ -38,7 +38,7 @@ app.use(cors({
     },
     maxAge: 5,
     credentials: true,
-    allowMethods: ['GET', 'POST', 'DELETE', 'OPATION'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization', 'Accept'],
 }))
 
