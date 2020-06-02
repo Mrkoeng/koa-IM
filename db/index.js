@@ -33,9 +33,9 @@ const commomTable = {
       user_id VARCHAR ( 100 ) NOT NULL COMMENT '账号',
       user_name VARCHAR ( 100 ) NOT NULL COMMENT '用户名',
       user_pwd VARCHAR ( 100 ) NOT NULL COMMENT '密码',
-      user_head VARCHAR ( 225 ) COMMENT '头像',
-      user_mobile VARCHAR ( 20 ) COMMENT '手机',
-      user_email VARCHAR ( 64 ) COMMENT '邮箱',
+      user_head VARCHAR ( 225 ) NOT NULL COMMENT '头像',
+      user_mobile VARCHAR ( 20 ) NOT NULL DEFAULT '' COMMENT '手机',
+      user_email VARCHAR ( 64 ) NOT NULL DEFAULT '' COMMENT '邮箱',
       user_creatdata TIMESTAMP NOT NULL DEFAULT NOW( ) COMMENT '注册日期',
       user_login_time TIMESTAMP DEFAULT NOW( ) COMMENT '登录时间',
       user_socketid VARCHAR ( 225 ) COMMENT 'socketid',
@@ -123,9 +123,9 @@ let addUser = async function(userinfo) {
     let _sql =
         `
        INSERT INTO user_info 
-       ( user_id, user_pwd,user_creatdata,user_login_time)
+       ( user_id,user_name,user_pwd,user_head,user_creatdata,user_login_time)
        VALUES
-       ( "${userinfo.name}", "${userinfo.password}",Now(),Now())
+       ( "${userinfo.user_id}","${userinfo.user_name}", "${userinfo.user_pwd}", "${userinfo.user_head}",Now(),Now())
     `
     let result = await query(_sql)
     console.log('创建用户结果', result);

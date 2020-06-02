@@ -2,6 +2,11 @@
  * [getDate 获取当前年月日]
  * @return {[type]} [description]
  */
+
+const path = require('path'),
+    fs = require('fs');
+
+
 let getDate = function() {
     let nowDate = new Date();
     return `${nowDate.getFullYear()}-${getZero(nowDate.getMonth() + 1)}-${getZero(nowDate.getDate())}`;
@@ -105,10 +110,30 @@ let toHumpFun = function(obj) {
     }
     return result
 }
+
+let genHeadimg = function(){
+    var url_img = "";
+    var path = "./public/images/avatar/";
+    var ip = "127.0.0.1";
+    var port = "3000";
+    var path_link = "http://"+ip + ":" + port + "/images/avatar/";
+ 
+    var files = fs.readdirSync(path);
+ 
+    var len = files.length;
+    var randNum = Math.floor(Math.random()*len);
+    var url_img = path_link + files[randNum];
+    return url_img;
+};
+let randomText = function(){
+    return Math.random().toString(36).substr(2);
+};
 module.exports = {
     getDate: getDate,
     getFulldate: getFulldate,
     getPartDate: getPartDate,
     formatDate: formatDate,
-    toHumpFun
+    toHumpFun,
+    genHeadimg,
+    randomText
 }

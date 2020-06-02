@@ -8,6 +8,7 @@ const debug = require('debug')('demo:server');
 const Moment = require('moment');
 const http = require('http'),
     koaBody = require('koa-body'),
+    koaStatic = require('koa-static'),
     router = require('./api'),
     path = require('path'),
     creatSocket = require('./socket'),
@@ -17,19 +18,19 @@ const http = require('http'),
 
 // error handler
 onerror(app)
+
 // middlewares 中间件
-// logger
+//控制台日志
 const TimeLogger = logger(str => {
     console.log(Moment().format('YYYY-MM-DD HH:mm:ss') + str);
 })
 app.use(TimeLogger) 
-//控制台日志
-// app.use(async (ctx, next) => {
-//     const start = new Date()
-//     await next()
-//     const ms = new Date() - start
-//     console.log(`${ctx.method} ${ctx.url} - ${ms}ms`)
-// })
+
+/**静态资源（服务端） */
+app.use(koaStatic(path.join(__dirname + "/public")));
+
+
+// 跨域
 app.use(cors({
     origin: function(ctx) {
         // if (ctx.url === '/test') {
@@ -44,17 +45,21 @@ app.use(cors({
 
 app.use(koaBody({
     multipart: true, // 支持文件上传
+    encoding:'gzip',
     formidable: {
-        uploadDir: path.join(__dirname, 'uploads'),
+        // uploadDir: path.join(__dirname, 'uploads'),
         keepExtensions:true,//保持文件后缀
-        onFileBegin:(name,file)=>{
-            console.log(`name:${name}`);
-        }
+        // onFileBegin:(name,file)=>{
+        //     console.log(`name:${name}`);
+        //     console.log(firle);
+        // }
         
     }
 }));
+
+// JSON解析
 app.use(json())
-app.use(require('koa-static')(__dirname + '/public'))
+
 // app.use(views(__dirname + '/views', {
 //     extension: 'pug'
 // }))
