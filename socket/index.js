@@ -110,12 +110,21 @@ function creatSocket(app) {
 
         //捕获客户端自定义信息
         // 添加为好友，暂时不需要同意
-        clientSocket.on('addFriends', async (data, fn) => {
-            console.log(123);
+        clientSocket.on('addFriends', async (id, fn) => {
+            let result = await db.addFriends({from_user:user_id,to_user:id})
+            fn({success:true,message:'添加成功'})
         })
 
         //查询user
-        clientSocket.on('findUser', async (data, fn) => {
+        clientSocket.on('findUser', async (id, fn) => {
+            let result = await db.findUser(id)
+            let isFriend = await db.isFriends({from_user:user_id,user_id:id}) 
+            if(result){
+                let {user_name,user_head,user_id} = result
+                fn([{user_name,user_head,user_id,isFriend}])
+            }else{
+                fn([])
+            }
             console.log(123);
         })
         //监听客户端断开连接

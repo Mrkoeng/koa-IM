@@ -128,6 +128,9 @@ let genHeadimg = function(){
 let randomText = function(){
     return Math.random().toString(36).substr(2);
 };
+let UUID = function (length) {
+    return Number(Math.random().toString().substr(3, length) + Date.now()).toString(36);
+}
 module.exports = {
     getDate: getDate,
     getFulldate: getFulldate,
@@ -135,5 +138,6 @@ module.exports = {
     formatDate: formatDate,
     toHumpFun,
     genHeadimg,
-    randomText
+    randomText,
+    UUID
 }

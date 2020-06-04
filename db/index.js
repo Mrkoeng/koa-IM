@@ -70,7 +70,7 @@ const commomTable = {
       user_id VARCHAR(16) NOT NULL,
       from_user VARCHAR(16) NOT NULL,
       remark varchar(10) DEFAULT NULL,
-      time TIMESTAMP NOT NULL DEFAULT NOW( ) COMMENT '添加好友时间',
+      time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP() COMMENT '添加好友时间',
       PRIMARY KEY (id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8;`,
 }
@@ -137,21 +137,6 @@ let addUser = async function(userinfo) {
     return result
 }
 
-// 查询用户以及用户角色
-let findUserAndRole = async (id)=> {
-    let _sql =
-        `
-      SELECT u.*,r.role_name FROM user_info u,user_role ur,role_info r where u.id=(SELECT id FROM user_info where user_id="${id}" limit 1) and ur.user_id=u.id and r.id=ur.user_id limit 1;
-    `
-    let result = await query(_sql)
-
-    if (Array.isArray(result) && result.length > 0) {
-        result = result[0]
-    } else {
-        result = null
-    }
-    return result
-}
     
 // 查询用户好友列表
 let findUserFriendList = async ({user_id})=> {
@@ -161,7 +146,8 @@ let findUserFriendList = async ({user_id})=> {
         LEFT JOIN 
         user_user_relation ur 
         on ur.user_id = ul.user_id 
-        where ur.from_user = "${user_id}";`
+        where ur.from_user = "${user_id}";
+        `
     return query(_sql)
 }
 
@@ -211,6 +197,22 @@ let getAllMessage = async ({ user_id })=>{
         `
     return query(_sql)
 }
+
+// 获取用户聊天所有信息
+let isFriends = async ({from_user,user_id})=>{
+    let _sql =
+        `
+        SELECT * FROM user_user_relation WHERE from_user="${from_user}" AND user_id="${user_id}";
+        `
+    let result = await query(_sql)
+    if (Array.isArray(result) && result.length > 0) {
+        result = true
+    } else {
+        result = false
+    }
+    return result
+}
+
   // 获取离线信息
 let getOffLineMessage = async ({ user_id })=>{
   let _sql =
@@ -231,12 +233,20 @@ let deleteOffLineMessage =  async ({ user_id })=>{
         `
     return query(_sql)
 }
+// 双方添加好友
+let addFriends = async ({from_user, to_user})=>{
+    let _sql =
+        `INSERT INTO user_user_relation(from_user,user_id)  VALUES("${from_user}","${to_user}"),("${to_user}","${from_user}");`
+    return query(_sql)
+}
+
 module.exports = {
     //暴露方法
     // createTable,
     addUser,
     findUser,
-    // addFriends,  
+    isFriends,
+    addFriends, 
     findUserFriendList,
     updataUserInfo,
     saveUserSocketId,

@@ -1,6 +1,4 @@
 const Koa = require('koa')
-const app = new Koa()
-const views = require('koa-views')
 const json = require('koa-json')
 const onerror = require('koa-onerror')
 const logger = require('koa-logger')
@@ -16,20 +14,23 @@ const http = require('http'),
     koajwt = require('koa-jwt'),
     config = require('./config.js');
 
+const app = new Koa()
+
 // error handler
 onerror(app)
 
-// middlewares 中间件
 //控制台日志
 const TimeLogger = logger(str => {
     console.log(Moment().format('YYYY-MM-DD HH:mm:ss') + str);
 })
-app.use(TimeLogger) 
+app.use(TimeLogger)
 
 /**静态资源（服务端） */
 app.use(koaStatic(path.join(__dirname + "/public")));
+app.use(koaStatic(path.join(__dirname + "/uploadFile")));
 
-
+http://hocalhost:3000/uploadFile/jx2sjkrv8xc0000000638aeba9594c199475d1b2ee50b5f07e.png
+http://127.0.0.1:3000/images/avatar/e377017c6686136394e91b6a3ef47077.jpeg
 // 跨域
 app.use(cors({
     origin: function(ctx) {
@@ -43,34 +44,11 @@ app.use(cors({
     allowHeaders: ['Content-Type', 'Authorization', 'Accept'],
 }))
 
-app.use(koaBody({
-    multipart: true, // 支持文件上传
-    encoding:'gzip',
-    formidable: {
-        // uploadDir: path.join(__dirname, 'uploads'),
-        keepExtensions:true,//保持文件后缀
-        // onFileBegin:(name,file)=>{
-        //     console.log(`name:${name}`);
-        //     console.log(firle);
-        // }
-        
-    }
-}));
-
 // JSON解析
 app.use(json())
 
-// app.use(views(__dirname + '/views', {
-//     extension: 'pug'
-// }))
+app.use(koaBody({multipart: true}));
 
-// routes
-app.use(router.routes());
-
-// error-handling
-app.on('error', (err, ctx) => {
-    console.error('server error', err, ctx)
-});
 // 对token进行验证
 app.use(async (ctx, next) => {
     return next().catch((err) => {
@@ -85,11 +63,20 @@ app.use(async (ctx, next) => {
         }
     })
 });
+app.use(koajwt({ secret: config.jwt_secret}).unless({
+    // 登录，注册接口不需要验证
+    path: [/^\/api\/common\/login/]
+}));
 
-// app.use(koajwt({ secret: config.jwt_secret, passthrough: true }).unless({
-//     // 登录，注册接口不需要验证
-//     path: [/^\/api\/login/]
-// }));
+// app.use(verify());
+
+// routes
+app.use(router.routes());
+
+// error-handling
+app.on('error', (err, ctx) => {
+    console.error('server error', err, ctx)
+});
 
 
 

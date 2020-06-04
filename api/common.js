@@ -1,16 +1,17 @@
 const Router = require('koa-router'),
     md5 = require('md5'),
     db = require('../db/index.js'),
-    util = require('../util/index.js'),
+    path = require('path'),
+    util = require('../util'),
     fs = require('fs'),
     jsonwebtoken = require('jsonwebtoken');
+const config = require('../config.js');
+const uploadUrl="http://localhost:3000";
 const upload= {
-        UPLOAD: '/uploadFile',
         IMAGE: '/image/',
         FILE: '/file/',
         VOICE:'/voice/'
     }
-const config = require('../config.js');
 let common = new Router();
 
 common.get('/login', async (ctx, next) => {
@@ -31,11 +32,7 @@ common.get('/login', async (ctx, next) => {
                     name: result.userName,
                     userId: result.userId,
                     avatar: result.userHead,
-                    token: jsonwebtoken.sign({
-                        userId: result.userId
-                    }, config.jwt_secret, {
-                        expiresIn: '6h'
-                    }) // 加密userToken
+                    token: jsonwebtoken.sign({user_id: result.userId,user_name: result.userName,}, config.jwt_secret, {expiresIn: '6h'}) // 加密userToken
                 }
             };
             let time = new Date().getTime()
@@ -86,31 +83,46 @@ common.post('/register', async (ctx, next) => {
     }
 });
 
-router.post("/upload", async (ctx) => {
-    console.log(ctx.request);
+common.post("/upload", async (ctx,next) => {
+    // console.dir(ctx);
     const file = ctx.request.files.file;
     const reader = fs.createReadStream(file.path);
-    let filePath = __dirname + "/uploadFile/";
-    let fileResource = filePath + `/${file.name}`;
-    // if (!fs.existsSync(filePath)) { //判断staic/upload文件夹是否存在，如果不存在就新建一个
-    //     fs.mkdir(filePath, (err) => {
-    //         if (err) {
-    //             throw new Error(err)
-    //         } else {
-    //             let upstream = fs.createWriteStream(fileResource);
-    //             reader.pipe(upstream);
-    //             ctx.response.body = {
-    //                 url: uploadUrl + `/${file.name}`
-    //             }
-    //         }
-    //     })
-    // } else {
-    //     let upstream = fs.createWriteStream(fileResource)
-    //     reader.pipe(upstream);
-    //     ctx.response.body = {
-    //         url: uploadUrl + `/${file.name}` //返给前端一个url地址
-    //     }
-    // }
+    let fileType = file.type
+    let filePath =path.resolve("uploadFile");
+    file.name = util.UUID()+file.name;
+    let fileResource = path.join(filePath,`/file/${file.name}`);;
+    let url = `/file/${file.name}`
+    if(fileType.match('image')){
+        fileResource = path.join(filePath,`/image/${file.name}`);
+        url = `/image/${file.name}`
+    }else if(fileType.match('audio')){
+        fileResource = path.join(filePath,`/voice/${file.name}`);
+        url = `/voice/${file.name}`
+    }
+    console.log(filePath,fileResource,__dirname);
+    if (!fs.existsSync(filePath)) { //判断staic/upload文件夹是否存在，如果不存在就新建一个
+        fs.mkdir(filePath, (err) => {
+            if (err) {
+                throw new Error(err)
+            } else {
+                let upstream = fs.createWriteStream(fileResource);
+                reader.pipe(upstream);
+                ctx.body = {
+                    success:true,
+                    name:`${file.name}`,
+                    type:fileType,
+                    url: uploadUrl + url
+                }
+            }
+        })
+    } else {
+        let upstream = fs.createWriteStream(fileResource)
+        reader.pipe(upstream);
+        ctx.body = {
+            success:true,
+            url: uploadUrl + url //返给前端一个url地址
+        }
+    }
 })
 
 module.exports = common;
