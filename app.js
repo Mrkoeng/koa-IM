@@ -29,8 +29,6 @@ app.use(TimeLogger)
 app.use(koaStatic(path.join(__dirname + "/public")));
 app.use(koaStatic(path.join(__dirname + "/uploadFile")));
 
-http://hocalhost:3000/uploadFile/jx2sjkrv8xc0000000638aeba9594c199475d1b2ee50b5f07e.png
-http://127.0.0.1:3000/images/avatar/e377017c6686136394e91b6a3ef47077.jpeg
 // 跨域
 app.use(cors({
     origin: function(ctx) {

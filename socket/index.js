@@ -53,6 +53,9 @@ function creatSocket(app) {
                     db.getOffLineMessage({user_id}),
                     db.findUserFriendList({user_id})
                 ]);
+                allMessage.forEach(item=>{
+                    item.attachments = JSON.parse(item.attachments)
+                })
                 console.log(allMessage);
                 // 返回好友列表及离线信息
                 fn(allMessage, friendList)
