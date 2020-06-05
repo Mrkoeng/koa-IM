@@ -63,7 +63,7 @@ app.use(async (ctx, next) => {
 });
 app.use(koajwt({ secret: config.jwt_secret}).unless({
     // 登录，注册接口不需要验证
-    path: [/^\/api\/common\/login/]
+    path: [/^\/api\/common\/login/,/^\/api\/common\/register/]
 }));
 
 // app.use(verify());
